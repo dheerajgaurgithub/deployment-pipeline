@@ -1,0 +1,119 @@
+name: Deploy Knowledge Base
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '.gitignore'
+      - 'README.md'
+      - 'CONTRIBUTING.md'
+      - 'LICENSE'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run all linters
+        run: npm run lint:all
+
+      - name: Run scripts in script directory
+        env:
+          URL_CHECKER_TIMEOUT: ${{ vars.URL_CHECKER_TIMEOUT }}
+        run: |
+          TIMEOUT="${URL_CHECKER_TIMEOUT:-5}"
+          node script/url-checker.js -t "$TIMEOUT" -p "src/posts"
+
+  build:
+    name: Build
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v4
+
+      - name: Build production site
+        run: |
+          REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
+          export PATH_PREFIX="/${REPO_NAME}/"
+          npm run prod
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./_site
+
+  deploy:
+    name: Deploy
+    needs: [test, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+      issues: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Create Deployment Summary Issue
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          TODAY_DATE=$(date +'%Y-%m-%d')
+          
+          if [ "${JOB_STATUS}" = "success" ]; then
+            STATUS_STR="succeeded"
+            FINAL_URL="${PAGE_URL}"
+          else
+            STATUS_STR="failed"
+            FINAL_URL="N/A"
+          fi
+
+          ISSUE_TITLE="${TODAY_DATE} - Deployment: ${STATUS_STR}"
+          ISSUE_BODY="URL: ${FINAL_URL}"
+
+          gh issue create --title "$ISSUE_TITLE" --body "$ISSUE_BODY"
