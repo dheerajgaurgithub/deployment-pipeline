@@ -53,7 +53,7 @@ jobs:
           URL_CHECKER_TIMEOUT: ${{ vars.URL_CHECKER_TIMEOUT }}
         run: |
           TIMEOUT="${URL_CHECKER_TIMEOUT:-5}"
-          node script/url-checker.js -t "$TIMEOUT" -p "src/posts"
+          node script/url-checker.js -t "$TIMEOUT" -d "src/posts"
 
   build:
     name: Build
