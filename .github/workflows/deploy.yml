@@ -43,9 +43,7 @@ jobs:
             ${{ runner.os }}-node-
 
       - name: Install dependencies
-        run: |
-          npm ci --ignore-scripts
-          npm rebuild sharp
+        run: npm ci
 
       - name: Run all linters
         run: npm run lint:all
@@ -79,9 +77,7 @@ jobs:
             ${{ runner.os }}-node-
 
       - name: Install dependencies
-        run: |
-          npm ci --ignore-scripts
-          npm rebuild sharp
+        run: npm ci
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v4
@@ -90,7 +86,6 @@ jobs:
         run: |
           REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
           export PATH_PREFIX="/${REPO_NAME}/"
-          npx pagefind --site _site || true
           npm run prod
 
       - name: Upload Pages artifact
@@ -111,6 +106,9 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
@@ -135,4 +133,4 @@ jobs:
           ISSUE_TITLE="${TODAY_DATE} - Deployment: ${STATUS_STR}"
           ISSUE_BODY="URL: ${FINAL_URL}"
 
-          gh issue create --title "$ISSUE_TITLE" --body "$ISSUE_BODY"
+          gh issue create --repo "${{ github.repository }}" --title "$ISSUE_TITLE" --body "$ISSUE_BODY"
