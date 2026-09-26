@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}
   cancel-in-progress: true
 
 permissions:
@@ -25,6 +25,8 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    env:
+      URL_CHECKER_TIMEOUT: ${{ vars.URL_CHECKER_TIMEOUT }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -35,22 +37,22 @@ jobs:
           node-version: '18'
 
       - name: Cache node modules
+        id: npm-cache
         uses: actions/cache@v4
         with:
-          path: ~/.npm
+          path: node_modules
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
 
       - name: Install dependencies
+        if: steps.npm-cache.outputs.cache-hit != 'true'
         run: npm ci
 
       - name: Run all linters
         run: npm run lint:all
 
       - name: Run scripts in script directory
-        env:
-          URL_CHECKER_TIMEOUT: ${{ vars.URL_CHECKER_TIMEOUT }}
         run: |
           TIMEOUT="${URL_CHECKER_TIMEOUT:-5}"
           node script/url-checker.js -t "$TIMEOUT" -d "src/posts"
@@ -69,14 +71,16 @@ jobs:
           node-version: '18'
 
       - name: Cache node modules
+        id: npm-cache
         uses: actions/cache@v4
         with:
-          path: ~/.npm
+          path: node_modules
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
 
       - name: Install dependencies
+        if: steps.npm-cache.outputs.cache-hit != 'true'
         run: npm ci
 
       - name: Configure GitHub Pages
@@ -124,13 +128,11 @@ jobs:
           
           if [ "${JOB_STATUS}" = "success" ]; then
             STATUS_STR="succeeded"
-            FINAL_URL="${PAGE_URL}"
           else
             STATUS_STR="failed"
-            FINAL_URL="N/A"
           fi
 
           ISSUE_TITLE="${TODAY_DATE} - Deployment: ${STATUS_STR}"
-          ISSUE_BODY="URL: ${FINAL_URL}"
+          ISSUE_BODY="URL: ${PAGE_URL}"
 
           gh issue create --repo "${{ github.repository }}" --title "$ISSUE_TITLE" --body "$ISSUE_BODY"
