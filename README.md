@@ -1,3 +1,8 @@
+## Project Deliverables
+
+* **GitHub Repository:** [https://github.com/dheerajgaurgithub/deployment-pipeline](https://github.com/dheerajgaurgithub/deployment-pipeline)
+* **Published Knowledge Base Website:** [https://dheerajgaurgithub.github.io/deployment-pipeline/](https://dheerajgaurgithub.github.io/deployment-pipeline/)
+  
 # CorpX Documentation
 
 Welcome to CorpX documentation! Our documentation serves as a vital resource for understanding our products, services, and processes. It ensures clarity, consistency, and accessibility for both internal teams and external users. We value your contributions to keeping our documentation robust and up-to-date.
